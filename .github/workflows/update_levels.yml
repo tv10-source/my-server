@@ -1,0 +1,27 @@
+name: Update Levels
+on:
+  schedule:
+    - cron: '*/5 * * * *' # Каждые 5 минут
+  workflow_dispatch: # Кнопка для ручного запуска
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install MySQL Client
+        run: sudo apt-get install -y mysql-client
+      - name: Fetch Levels
+        run: |
+          mysql -h ://infinityfree.com -u gdps_rgdpsrandom -p${{ secrets.DB_PASSWORD }} gdps_rgdpsrandom -e "SELECT CONCAT('  - ', levelName, ' (ID: ', levelID, ') by ', userName) FROM levels ORDER BY levelID DESC LIMIT 10" > levels.txt
+      - name: Update index.html
+        run: |
+          # Тут магия замены текста в твоем HTML
+          sed -i '/<!-- LEVELS_START -->/,/<!-- LEVELS_END -->/c\<!-- LEVELS_START -->\n'"$(cat levels.txt)"'\n<!-- LEVELS_END -->' index.html
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add index.html
+          git commit -m "Авто-обновление уровней ☺️" || exit 0
+          git push
